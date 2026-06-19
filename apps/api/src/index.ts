@@ -3,6 +3,7 @@
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { serve } from '@hono/node-server';
 import contracts from './routes/contracts.js';
 
 const app = new Hono();
@@ -24,9 +25,6 @@ app.get('/', (c) => {
 
 // 启动
 const port = Number(process.env.API_PORT) || 3000;
-console.log(`🚀 API Server running at http://localhost:${port}`);
-
-export default {
-  port,
-  fetch: app.fetch,
-};
+serve({ fetch: app.fetch, port }, (info) => {
+  console.log(`🚀 API Server running at http://localhost:${info.port}`);
+});

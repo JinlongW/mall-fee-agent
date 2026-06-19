@@ -46,9 +46,9 @@ export function calcFixedRent(rules: ContractFeeRules, period: string): number {
   const yearsElapsed = Math.floor(monthsElapsed / 12);
 
   const price = escalation.base === 'previous'
-    ? Array.from({ length: yearsElapsed }).reduce(
-        (p) => p * (1 + escalation.rate), basePrice)
-    : basePrice * Math.pow(1 + escalation.rate, yearsElapsed);
+    ? Array.from({ length: yearsElapsed }).reduce<number>(
+        (p: number) => p * (1 + (escalation.rate ?? 0)), basePrice)
+    : basePrice * Math.pow(1 + (escalation.rate ?? 0), yearsElapsed);
 
   return rules.unit.area * price;
 }
