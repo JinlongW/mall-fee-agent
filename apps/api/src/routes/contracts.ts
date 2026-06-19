@@ -237,4 +237,95 @@ app.delete('/bills/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// =============================================================
+// PDF 账单生成
+// =============================================================
+
+const GeneratePdfSchema = z.object({
+  contract_id: z.string().min(1),
+  period: z.string().regex(/^\d{4}-\d{2}$/, '格式 YYYY-MM'),
+  sales: z.number().min(0),
+  elec_current: z.number().min(0),
+  elec_previous: z.number().min(0),
+  water_current: z.number().min(0),
+  water_previous: z.number().min(0),
+});
+
+app.post('/bills/generate-pdf', zValidator('json', GeneratePdfSchema), async (c) => {
+  const data = c.req.valid('json');
+  try {
+    // 加载合同规则
+    const contract = await ContractService.getByContractId(data.contract_id);
+    if (!contract) {
+      return c.json({ success: false, error: '合同不存在' }, 404);
+    }
+
+    // 重建规则对象
+    const rules = {
+      contract_id: contract.contractId,
+      merchant: {
+        name: contract.merchantName,
+        business_type: contract.businessType as any,
+      },
+      unit: {
+        unit_id: contract.unitId,
+        floor: contract.floor,
+        area: Number(contract.area),
+      },
+      lease_period: {
+        start: contract.leaseStart,
+        end: contract.leaseEnd,
+        free_rent: contract.freeRentStart && contract.freeRentEnd
+          ? {
+              start: contract.freeRentStart,
+              end: contract.freeRentEnd,
+              rent_free: true,
+              property_fee_free: false,
+              method: 'direct' as const,
+            }
+          : null,
+      },
+      rent: contract.rentRules as any,
+      property_fee: (contract.propertyFeeRules ?? null) as any,
+      utilities: (contract.utilityRules ?? null) as any,
+      other_fees: (contract.otherFeeRules ?? null) as any,
+      late_fee: (contract.lateFeeRules ?? null) as any,
+      confidence: Number(contract.aiConfidence ?? 0),
+      notes: contract.notes ?? null,
+    };
+
+    // 计算账单
+    const { bill } = BillService.calculateBill(rules, {
+      period: data.period,
+      sales: data.sales,
+      elecCurrent: data.elec_current,
+      elecPrevious: data.elec_previous,
+      waterCurrent: data.water_current,
+      waterPrevious: data.water_previous,
+    });
+
+    // 生成 PDF（服务端渲染）
+    const { renderToBuffer } = await import('@react-pdf/renderer');
+    const { BillDocument } = await import('../services/pdf-generator.js');
+    const pdfStream = await renderToBuffer(
+      BillDocument({
+        contractId: contract.contractId,
+        merchantName: contract.merchantName,
+        period: data.period,
+        rules,
+        bill,
+      })
+    );
+    const pdfBuffer = Buffer.from(pdfStream);
+
+    // 返回 PDF
+    c.header('Content-Type', 'application/pdf');
+    c.header('Content-Disposition', `inline; filename="bill-${contract.contractId}-${data.period}.pdf"`);
+    return c.body(pdfBuffer, 200);
+  } catch (error) {
+    console.error('PDF 生成失败:', error);
+    return c.json({ success: false, error: error instanceof Error ? error.message : '生成失败' }, 500);
+  }
+});
+
 export default app;

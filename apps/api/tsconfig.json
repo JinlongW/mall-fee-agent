@@ -4,7 +4,8 @@
     "outDir": "./dist",
     "rootDir": "./src",
     "types": ["node"],
-    "lib": ["ES2022"]
+    "lib": ["ES2022"],
+    "jsx": "react-jsx"
   },
   "include": ["src/**/*"],
   "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/fee-engine" }]

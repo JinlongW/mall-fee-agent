@@ -5,9 +5,9 @@
 import { useState, useMemo } from 'react';
 import {
   Card, Row, Col, Form, InputNumber, Button, Statistic, Descriptions,
-  Tag, Space, Alert, Divider, Table, Tooltip, Typography
+  Tag, Space, Alert, Divider, Table, Tooltip, Typography, message
 } from 'antd';
-import { ArrowLeftOutlined, DownloadOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, DownloadOutlined, InfoCircleOutlined, FilePdfOutlined } from '@ant-design/icons';
 import { calcMonthlyFees } from '@mall/fee-engine';
 import type { CalcOutput } from '@mall/fee-engine';
 import type { ContractFeeRules } from '@mall/shared';
@@ -78,6 +78,51 @@ export function FeePreview({ rules, onBack }: Props) {
     URL.revokeObjectURL(url);
   };
 
+  // 生成 PDF 账单
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const generatePdf = async () => {
+    if (!rules.contract_id) {
+      message.warning('合同未保存，无法生成 PDF');
+      return;
+    }
+    setPdfLoading(true);
+    try {
+      const res = await fetch('/api/contracts/bills/generate-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract_id: rules.contract_id,
+          period,
+          sales,
+          elec_current: elecCurrent,
+          elec_previous: elecPrevious,
+          water_current: waterCurrent,
+          water_previous: waterPrevious,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        message.error(`PDF 生成失败：${err.error ?? '未知错误'}`);
+        return;
+      }
+
+      // 下载 PDF
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bill-${rules.contract_id}-${period}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      message.success('PDF 账单已生成');
+    } catch (e) {
+      message.error(`PDF 生成失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <Card
       title={
@@ -90,6 +135,9 @@ export function FeePreview({ rules, onBack }: Props) {
         <Space>
           <Button icon={<ArrowLeftOutlined />} onClick={onBack}>
             返回编辑
+          </Button>
+          <Button icon={<FilePdfOutlined />} onClick={generatePdf} loading={pdfLoading}>
+            生成 PDF 账单
           </Button>
           <Button icon={<DownloadOutlined />} onClick={exportJson}>
             导出账单 JSON
