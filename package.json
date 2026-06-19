@@ -1,0 +1,21 @@
+{
+  "name": "mall-fee-agent",
+  "version": "0.1.0",
+  "private": true,
+  "description": "购物中心合同费用自动核算 + 账单生成 AI Agent",
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --fix .",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}
