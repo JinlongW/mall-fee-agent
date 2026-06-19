@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "test": "vitest run",
+    "migrate": "tsx tools/migrate.ts",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

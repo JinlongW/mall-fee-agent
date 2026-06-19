@@ -6,7 +6,7 @@ import postgres from 'postgres';
 import * as schema from './schema.js';
 
 // 数据库连接参数
-const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/mall_fee_agent';
+const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/mall_fee_agent';
 
 // 创建 postgres 客户端
 const client = postgres(dbUrl, {

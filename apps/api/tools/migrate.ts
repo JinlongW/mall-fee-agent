@@ -1,7 +1,8 @@
 /**
  * 数据库迁移脚本
  *
- * 使用：pnpm tsx tools/migrate.ts
+ * 使用：pnpm migrate
+ * 环境变量：DATABASE_URL（默认 postgresql://postgres:postgres@127.0.0.1:5432/mall_fee_agent）
  */
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -11,7 +12,29 @@ import postgres from 'postgres';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@localhost:5432/mall_fee_agent';
+// 自动加载 .env 文件
+function loadEnv() {
+  const envPath = join(__dirname, '..', '..', '..', '.env');
+  try {
+    const content = readFileSync(envPath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const [key, ...rest] = trimmed.split('=');
+      if (key && rest.length > 0) {
+        const value = rest.join('=').trim();
+        if (!(key in process.env)) {
+          process.env[key] = value;
+        }
+      }
+    }
+  } catch {
+    // .env 不存在，使用默认值
+  }
+}
+loadEnv();
+
+const dbUrl = process.env.DATABASE_URL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/mall_fee_agent';
 
 async function main() {
   const client = postgres(dbUrl, { max: 1 });
