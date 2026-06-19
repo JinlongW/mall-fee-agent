@@ -11,14 +11,12 @@ const app = new Hono();
 // 解析合同
 app.post('/parse', zValidator('json', z.object({
   contract_text: z.string().min(100, '合同文本过短'),
-  model: z.enum(['claude', 'deepseek', 'auto']).optional(),
+  model: z.enum(['claude', 'deepseek', 'mock']).optional(),
 })), async (c) => {
   const { contract_text, model } = c.req.valid('json');
 
   try {
-    const rules = await parseContract(contract_text, {
-      model: model === 'auto' ? undefined : model,
-    });
+    const rules = await parseContract(contract_text, { model });
 
     return c.json({
       success: true,

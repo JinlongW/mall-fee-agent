@@ -318,13 +318,114 @@ export async function parseContractWithDeepSeek(text: string): Promise<ContractF
 }
 
 /**
+ * Mock 解析器（用于本地开发，无 API Key 时使用）
+ * 根据文本特征智能返回匹配的示例
+ */
+function parseMock(text: string): ContractFeeRules {
+  const hasTakeHigher = text.includes('两者取高') || text.includes('取高');
+  const hasFreeRent = text.includes('免租期') || text.includes('免租');
+
+  // 提取合同编号
+  const contractMatch = text.match(/HT[-\s]?(\d{4})[-\s]?(\w+)/);
+  const contractId = contractMatch ? contractMatch[0].replace(/\s/g, '') : 'HT-2026-MOCK';
+
+  // 提取面积
+  const areaMatch = text.match(/面积\s*(\d+(?:\.\d+)?)\s*平方米/);
+  const area = areaMatch ? Number(areaMatch[1]) : 100;
+
+  // 提取铺位编号
+  const unitMatch = text.match(/铺位\s*([A-Z]?\d+[-\w]+)/);
+  const unitId = unitMatch ? unitMatch[1] : 'B1-001';
+
+  // 提取单价
+  const priceMatch = text.match(/每平方米\s*(\d+(?:\.\d+)?)\s*元/);
+  const basePrice = priceMatch ? Number(priceMatch[1]) : 150;
+
+  // 提取扣率
+  const rateMatch = text.match(/(\d+(?:\.\d+)?)\s*%/);
+  const rate = rateMatch ? Number(rateMatch[1]) / 100 : 0.12;
+
+  if (hasTakeHigher) {
+    const monthlyRent = basePrice * area;
+    return {
+      contract_id: contractId,
+      merchant: { name: 'Mock 商户', business_type: '餐饮' },
+      unit: { unit_id: unitId, floor: unitId.charAt(0), area },
+      lease_period: {
+        start: '2026-01-01',
+        end: '2028-12-31',
+        free_rent: hasFreeRent
+          ? {
+              start: '2026-01-01',
+              end: '2026-03-31',
+              rent_free: true,
+              property_fee_free: false,
+              method: 'direct',
+            }
+          : null,
+      },
+      rent: {
+        type: 'take_higher',
+        fixed: {
+          base_price: basePrice,
+          base_amount: monthlyRent,
+          escalation: { frequency: 'yearly', rate: 0.05, base: 'contract_start' },
+        },
+        turnover: { rate, minimum: monthlyRent, minimum_escalates: true },
+        tiered: null,
+      },
+      property_fee: { price: 25, includes_ac: true, shared_ratio: 0.15 },
+      utilities: null,
+      other_fees: null,
+      late_fee: { rate: 0.0005, grace_days: 10 },
+      confidence: 0.88,
+      notes: ['【Mock 模式】未配置 API Key，使用本地规则匹配'],
+    };
+  }
+
+  // 默认固定租金
+  return {
+    contract_id: contractId,
+    merchant: { name: 'Mock 商户', business_type: '零售' },
+    unit: { unit_id: unitId, floor: unitId.charAt(0), area },
+    lease_period: {
+      start: '2026-01-01',
+      end: '2028-12-31',
+      free_rent: null,
+    },
+    rent: {
+      type: 'fixed',
+      fixed: {
+        base_price: basePrice,
+        base_amount: basePrice * area,
+        escalation: null,
+      },
+      turnover: null,
+      tiered: null,
+    },
+    property_fee: null,
+    utilities: null,
+    other_fees: null,
+    late_fee: null,
+    confidence: 0.82,
+    notes: ['【Mock 模式】未配置 API Key'],
+  };
+}
+
+/**
  * 解析合同（自动选择模型 + 低置信度升级）
  */
 export async function parseContract(
   text: string,
-  options?: { model?: 'claude' | 'deepseek' }
+  options?: { model?: 'claude' | 'deepseek' | 'mock' }
 ): Promise<ContractFeeRules> {
   const model = options?.model ?? 'deepseek';
+
+  // Mock 模式：本地规则匹配，无 API Key 也能演示
+  if (model === 'mock' || !process.env.DEEPSEEK_API_KEY) {
+    console.log('[ContractParser] 使用 Mock 模式（未配置 DEEPSEEK_API_KEY）');
+    return parseMock(text);
+  }
 
   if (model === 'claude') {
     return parseContractWithClaude(text);
