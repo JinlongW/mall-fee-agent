@@ -341,9 +341,9 @@ function parseMock(text: string): ContractFeeRules {
   const priceMatch = text.match(/每平方米\s*(\d+(?:\.\d+)?)\s*元/);
   const basePrice = priceMatch ? Number(priceMatch[1]) : 150;
 
-  // 提取扣率
-  const rateMatch = text.match(/(\d+(?:\.\d+)?)\s*%/);
-  const rate = rateMatch ? Number(rateMatch[1]) / 100 : 0.12;
+  // 提取扣率（优先匹配"营业额...X%"或"扣率...X%"附近）
+  const turnoverRateMatch = text.match(/(?:营业额|扣率|扣点)[^。；]*?(\d+(?:\.\d+)?)\s*%/);
+  const rate = turnoverRateMatch ? Number(turnoverRateMatch[1]) / 100 : 0.12;
 
   if (hasTakeHigher) {
     const monthlyRent = basePrice * area;

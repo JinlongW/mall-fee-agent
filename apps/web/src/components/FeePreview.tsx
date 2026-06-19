@@ -37,10 +37,16 @@ function getCalculationDetails(rules: ContractFeeRules, _period: string, sales: 
     if (rent === 0) {
       details.rent = '免租期，租金为 0';
     } else if (rent === fixed && fixed >= effectiveTurnover) {
-      details.rent = `固定 ¥${fixed.toLocaleString()} ≥ 扣率 ¥${effectiveTurnover.toLocaleString()}，取固定`;
-    } else if (turnover >= minimum && turnover >= fixed) {
+      // 取固定：固定 ≥ 扣率（扣率已受保底保护）
+      const turnoverDisplay = turnover >= minimum
+        ? `¥${turnover.toLocaleString()} (¥${sales.toLocaleString()}×${(turnoverRate*100).toFixed(1)}%)`
+        : `¥${minimum.toLocaleString()} (保底)`;
+      details.rent = `固定 ¥${fixed.toLocaleString()} ≥ 扣率 ${turnoverDisplay}，取固定`;
+    } else if (effectiveTurnover === turnover && turnover >= fixed) {
+      // 取扣率：扣率 > 固定（且扣率 ≥ 保底）
       details.rent = `扣率 ¥${turnover.toLocaleString()} (¥${sales.toLocaleString()}×${(turnoverRate*100).toFixed(1)}%) > 固定 ¥${fixed.toLocaleString()}，取扣率`;
     } else {
+      // 取保底：保底 > 扣率且保底 > 固定
       details.rent = `保底 ¥${minimum.toLocaleString()} > 扣率 ¥${turnover.toLocaleString()}，取保底`;
     }
   } else if (rules.rent.type === 'fixed' && rules.rent.fixed && rules.rent.fixed.base_price) {
