@@ -30,6 +30,11 @@ const app = new Hono();
 // 合同路由
 // =============================================================
 
+// 健康检查（必须放在 /:id 之前避免冲突）
+app.get('/health', (c) => {
+  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // 解析合同（不保存）
 app.post('/parse', zValidator('json', z.object({
   contract_text: z.string().min(100, '合同文本过短'),
@@ -230,14 +235,6 @@ app.post('/bills/:id/paid', async (c) => {
 app.delete('/bills/:id', async (c) => {
   await BillService.delete(c.req.param('id'));
   return c.json({ success: true });
-});
-
-// =============================================================
-// 健康检查
-// =============================================================
-
-app.get('/health', (c) => {
-  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 export default app;

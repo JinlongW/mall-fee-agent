@@ -7,7 +7,7 @@ import {
   Card, Tabs, Form, Input, InputNumber, Select, Button, Space, Alert, Tag,
   Row, Col, Descriptions, Divider, message
 } from 'antd';
-import { EditOutlined, CodeOutlined, CheckOutlined } from '@ant-design/icons';
+import { EditOutlined, CodeOutlined, CheckOutlined, SaveOutlined } from '@ant-design/icons';
 import type { ContractFeeRules } from '@mall/shared';
 
 interface Props {
@@ -42,6 +42,50 @@ export function ParseResultViewer({
   onBack,
 }: Props) {
   const [jsonText, setJsonText] = useState(JSON.stringify(editingRules, null, 2));
+  const [saving, setSaving] = useState(false);
+
+  // 保存到数据库
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/contracts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contract_id: editingRules.contract_id,
+          merchant_name: editingRules.merchant.name,
+          business_type: editingRules.merchant.business_type,
+          unit_id: editingRules.unit.unit_id,
+          floor: editingRules.unit.floor,
+          area: editingRules.unit.area,
+          lease_start: editingRules.lease_period.start,
+          lease_end: editingRules.lease_period.end,
+          free_rent_start: editingRules.lease_period.free_rent?.start ?? null,
+          free_rent_end: editingRules.lease_period.free_rent?.end ?? null,
+          rent_type: editingRules.rent.type,
+          rent_rules: editingRules.rent,
+          property_fee_rules: editingRules.property_fee,
+          utility_rules: editingRules.utilities,
+          other_fee_rules: editingRules.other_fees,
+          late_fee_rules: editingRules.late_fee,
+          raw_contract_text: contractText,
+          ai_confidence: editingRules.confidence,
+          needs_review: editingRules.confidence < 0.8,
+          notes: editingRules.notes,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        message.success(`合同已保存（ID: ${data.data.id.slice(0, 8)}...）`);
+      } else {
+        message.error(`保存失败：${data.error}`);
+      }
+    } catch (e) {
+      message.error(`保存失败：${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const updateField = <K extends keyof ContractFeeRules>(
     key: K,
@@ -151,6 +195,13 @@ export function ParseResultViewer({
       extra={
         <Space>
           <Button onClick={onBack}>返回上一步</Button>
+          <Button
+            icon={<SaveOutlined />}
+            loading={saving}
+            onClick={handleSave}
+          >
+            保存到数据库
+          </Button>
           <Button type="primary" icon={<CheckOutlined />} onClick={onConfirm}>
             确认规则
           </Button>

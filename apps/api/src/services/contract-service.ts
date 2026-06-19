@@ -1,7 +1,7 @@
 /**
  * 合同服务 - 数据库操作
  */
-import { eq, desc, and, gte, lte } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
 import { db } from '../db/connection.js';
 import { contracts as contractsTable, type Contract, type NewContract } from '../db/schema.js';
 
@@ -78,10 +78,11 @@ export class ContractService {
     const where = conditions.length > 0 ? and(...conditions) : undefined;
 
     // 查询总数
-    const [{ count }] = await db
-      .select({ count: contractsTable.id })
+    const countResult = await db
+      .select({ count: sql<number>`count(*)` })
       .from(contractsTable)
       .where(where);
+    const total = Number(countResult[0]?.count ?? 0);
 
     // 查询分页数据
     const data = await db
@@ -92,7 +93,6 @@ export class ContractService {
       .limit(pageSize)
       .offset((page - 1) * pageSize);
 
-    const total = Number(count);
     const totalPages = Math.ceil(total / pageSize);
 
     return {
