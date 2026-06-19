@@ -72,7 +72,8 @@ describe('calcTieredRent', () => {
     expect(calcTieredRent(tiers, 200000)).toBe(20000);
   });
   it('高营业额', () => {
-    expect(calcTieredRent(tiers, 500000)).toBe(59000);
+    // 100000×8% + 200000×12% + 200000×15% = 8000+24000+30000 = 62000
+    expect(calcTieredRent(tiers, 500000)).toBe(62000);
   });
 });
 
@@ -82,7 +83,7 @@ describe('calcRent - 两者取高', () => {
     rent: {
       type: 'take_higher',
       fixed: { base_price: 150, base_amount: null, escalation: null },
-      turnover: { rate: 0.12, minimum: 18000, minimum_escalates: false },
+      turnover: { rate: 0.12, minimum: 10000, minimum_escalates: false },
       tiered: null,
     },
   };
@@ -90,6 +91,8 @@ describe('calcRent - 两者取高', () => {
     expect(calcRent(takeHighRules, '2026-04', 200000)).toBe(24000);
   });
   it('营业额低时取固定', () => {
+    // 扣率 = 100000×12% = 12000, 保底 10000, 有效扣率 = MAX(12000,10000) = 12000
+    // 固定 = 15000, MAX(15000, 12000) = 15000
     expect(calcRent(takeHighRules, '2026-04', 100000)).toBe(15000);
   });
   it('免租期内为 0', () => {
